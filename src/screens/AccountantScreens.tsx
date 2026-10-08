@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { BriefcaseBusiness, FileCheck2, FileUp, ShieldAlert, UserRound, Users } from 'lucide-react-native';
 import { Button, Card, Field, Notice, Pill, Screen, SectionTitle, TitleBlock } from '../components/ui/primitives';
@@ -10,14 +10,34 @@ import { theme } from '../theme';
 const obligationTypes: EvidenceType[] = ['IVA mensual', 'Impuesto a la renta', 'ATS / anexo', 'Otra obligación'];
 
 export function AccountantOpportunitiesScreen() {
-  const { sentProposals, sendProposal } = useApp();
+  const { sentProposals, sendProposal, marketplaceRequests, chatMessages, sendChatMessage } = useApp();
   const [filter, setFilter] = useState<'open' | 'sent'>('open');
+  const [requestId, setRequestId] = useState<string | null>(null);
+  const [price, setPrice] = useState('45');
+  const [estimatedTime, setEstimatedTime] = useState('2 días');
+  const [proposalMessage, setProposalMessage] = useState('Revisaré los comprobantes y te compartiré el resumen del trámite.');
+  const [chatDraft, setChatDraft] = useState('');
+  const selectedRequest = marketplaceRequests.find((item) => item.id === requestId) ?? null;
+
+  function submitOffer() {
+    const amount = Number(price.replace(',', '.'));
+    if (!selectedRequest || !Number.isFinite(amount) || amount <= 0 || !estimatedTime.trim() || !proposalMessage.trim()) {
+      Alert.alert('Revisa la propuesta', 'Completa una tarifa válida, el tiempo estimado y un mensaje.');
+      return;
+    }
+    sendProposal(selectedRequest.id, { price: amount, estimatedTime: estimatedTime.trim(), message: proposalMessage.trim() });
+    setRequestId(null);
+    Alert.alert('Propuesta enviada · demo', 'El cliente podrá revisarla en su apartado de propuestas recibidas.');
+  }
+
   return <Screen><TitleBlock eyebrow="MARKETPLACE PROFESIONAL" title={filter === 'open' ? 'Oportunidades' : 'Mis propuestas'} subtitle={filter === 'open' ? 'Encargos publicados por contribuyentes. Envía tu cotización para iniciar el contacto.' : 'Aquí solo ves las propuestas que tú enviaste a tus clientes.'} />
     <View style={styles.segment}><Pressable onPress={() => setFilter('open')} style={[styles.segmentButton, filter === 'open' && styles.segmentActive]}><Text style={[styles.segmentText, filter === 'open' && styles.segmentTextActive]}>Oportunidades</Text></Pressable><Pressable onPress={() => setFilter('sent')} style={[styles.segmentButton, filter === 'sent' && styles.segmentActive]}><Text style={[styles.segmentText, filter === 'sent' && styles.segmentTextActive]}>Mis propuestas ({sentProposals.length})</Text></Pressable></View>
     {filter === 'open' ? <>
       <Notice>Esta vista es del contador: solo aparecen encargos de clientes, no propuestas recibidas por contribuyentes.</Notice>
-      {opportunities.map((item) => <Card key={item.id}><View style={styles.opportunityHead}><View style={styles.opportunityIcon}><BriefcaseBusiness size={17} color={theme.brand} /></View><Pill tone="warning">Hasta {item.due}</Pill></View><Text style={styles.cardTitle}>{item.title}</Text><Text style={styles.muted}>Solicitado por {item.client}</Text><View style={styles.metaRow}><Pill>{item.category}</Pill><Text style={styles.price}>{item.budget} USD</Text></View><Button title={sentProposals.includes(item.id) ? 'Propuesta enviada' : 'Enviar mi propuesta'} variant={sentProposals.includes(item.id) ? 'secondary' : 'primary'} disabled={sentProposals.includes(item.id)} onPress={() => { sendProposal(item.id); Alert.alert('Propuesta enviada · demo', 'La cotización quedó en “Mis propuestas”.'); }} /></Card>)}
-    </> : sentProposals.length ? sentProposals.map((id) => { const item = opportunities.find((opp) => opp.id === id); return item ? <Card key={id}><Pill tone="good">Enviada · pendiente</Pill><Text style={styles.cardTitle}>{item.title}</Text><Text style={styles.muted}>Cliente: {item.client}</Text><View style={styles.metaRow}><Text style={styles.muted}>Tu cotización</Text><Text style={styles.price}>{item.budget} USD</Text></View><Notice>Esperando la respuesta del cliente · estado simulado.</Notice></Card> : null; }) : <Card><Text style={styles.cardTitle}>Aún no has enviado propuestas</Text><Text style={styles.muted}>Elige un encargo en “Oportunidades” y envía tu cotización.</Text><Button title="Ver oportunidades" onPress={() => setFilter('open')} /></Card>}
+      {marketplaceRequests.map((item) => <Card key={item.id}><View style={styles.opportunityHead}><View style={styles.opportunityIcon}><BriefcaseBusiness size={17} color={theme.brand} /></View><Pill tone="warning">{item.offers.length} propuestas</Pill></View><Text style={styles.cardTitle}>{item.title}</Text><Text style={styles.muted}>{item.description}</Text><View style={styles.metaRow}><Pill>Solicitud de contribuyente</Pill><Text style={styles.price}>{item.budget} USD</Text></View><Button title={sentProposals.includes(item.id) ? 'Propuesta enviada' : 'Preparar propuesta'} variant={sentProposals.includes(item.id) ? 'secondary' : 'primary'} disabled={sentProposals.includes(item.id)} onPress={() => setRequestId(item.id)} /></Card>)}
+    </> : sentProposals.length ? sentProposals.map((id) => { const item = marketplaceRequests.find((request) => request.id === id); const offer = item?.offers.find((entry) => entry.accountantName === 'Estudio contable demo'); return item && offer ? <Card key={id}><Pill tone={offer.accepted ? 'good' : 'warning'}>{offer.accepted ? 'Aceptada · demo' : 'Enviada · pendiente'}</Pill><Text style={styles.cardTitle}>{item.title}</Text><Text style={styles.muted}>Tu propuesta para la solicitud del contribuyente</Text><View style={styles.metaRow}><Text style={styles.muted}>{offer.estimatedTime}</Text><Text style={styles.price}>${offer.price.toFixed(2)}</Text></View><Text style={styles.muted}>{offer.message}</Text><Notice>{offer.accepted ? 'El cliente aceptó esta propuesta.' : 'Esperando la respuesta del cliente · estado simulado.'}</Notice></Card> : null; }) : <Card><Text style={styles.cardTitle}>Aún no has enviado propuestas</Text><Text style={styles.muted}>Elige un encargo en “Oportunidades” y envía tu cotización.</Text><Button title="Ver oportunidades" onPress={() => setFilter('open')} /></Card>}
+    {filter === 'sent' && sentProposals.some((id) => marketplaceRequests.find((request) => request.id === id)?.acceptedOfferId) ? <Card><Text style={styles.cardTitle}>Conversación con el cliente</Text>{chatMessages.length ? chatMessages.map((message) => <View key={message.id} style={styles.chatMessage}><Text style={styles.muted}>{message.sender === 'CONTADOR' ? 'Tú' : 'Contribuyente'} · {message.sentAt}</Text><Text style={styles.cardTitle}>{message.text}</Text></View>) : <Text style={styles.muted}>Aún no hay mensajes. Coordina aquí el trabajo aceptado.</Text>}<Field label="Mensaje" value={chatDraft} onChangeText={setChatDraft} placeholder="Escribe un mensaje" /><Button title="Enviar mensaje" disabled={!chatDraft.trim()} onPress={() => { sendChatMessage(chatDraft); setChatDraft(''); }} /><Notice>La conversación es local y de demostración.</Notice></Card> : null}
+    <Modal visible={Boolean(selectedRequest)} animationType="slide" transparent onRequestClose={() => setRequestId(null)}><View style={styles.modalBackdrop}><View style={styles.proposalSheet}><Text style={styles.cardTitle}>Tu propuesta</Text><Text style={styles.muted}>{selectedRequest?.title}</Text><Field label="Tarifa · USD" value={price} onChangeText={setPrice} keyboardType="numeric" /><Field label="Tiempo estimado" value={estimatedTime} onChangeText={setEstimatedTime} placeholder="Ej. 2 días" /><Field label="Mensaje al cliente" value={proposalMessage} onChangeText={setProposalMessage} multiline /><View style={styles.metaRow}><Button compact title="Cancelar" variant="secondary" onPress={() => setRequestId(null)} /><Button compact title="Enviar propuesta" onPress={submitOffer} /></View><Notice>La propuesta queda visible al contribuyente en esta demostración.</Notice></View></View></Modal>
   </Screen>;
 }
 
@@ -75,6 +95,9 @@ const styles = StyleSheet.create({
   muted: { color: theme.muted, fontSize: 12, lineHeight: 18 },
   metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   price: { color: theme.brandDark, fontSize: 15, fontWeight: '700' },
+  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#0c1b2066' },
+  proposalSheet: { gap: 10, paddingHorizontal: 18, paddingTop: 20, paddingBottom: 28, borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: theme.canvas },
+  chatMessage: { gap: 3, padding: 10, borderRadius: 11, backgroundColor: theme.surfaceMuted },
   statsLine: { flexDirection: 'row', gap: 9 },
   statCard: { flex: 1, alignItems: 'flex-start' },
   statNumber: { color: theme.brand, fontSize: 24, fontWeight: '800' },
