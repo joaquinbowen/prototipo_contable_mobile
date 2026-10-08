@@ -7,6 +7,7 @@ import { Button, Card, Field, Notice, Screen } from '../components/ui/primitives
 import { theme } from '../theme';
 import { useApp } from '../state/AppState';
 import type { UserRole } from '../state/types';
+import { getAccessIdentifierField, isValidAccessRuc } from '../state/accessIdentity';
 
 const roleOptions: { id: UserRole; label: string; description: string; Icon: typeof UserRound }[] = [
   { id: 'CONTRIBUYENTE', label: 'Contribuyente', description: 'Gestiona tu negocio y obligaciones', Icon: Building2 },
@@ -19,6 +20,7 @@ export function AuthScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [ruc, setRuc] = useState('');
+  const identifierField = getAccessIdentifierField(authMode, authRole);
 
   async function pickRuc() {
     const result = await DocumentPicker.getDocumentAsync({ type: ['application/pdf'], copyToCacheDirectory: true });
@@ -26,8 +28,12 @@ export function AuthScreen() {
   }
 
   function submit() {
-    if (!email.trim() || !password.trim() || (authMode === 'register' && !name.trim())) {
-      Alert.alert('Completa tus datos', authMode === 'register' ? 'Ingresa tu nombre, correo y contraseña para continuar.' : 'Ingresa tu correo y contraseña para continuar.');
+    if (authMode === 'login' && authRole !== 'SUPER_ADMIN' && !isValidAccessRuc(ruc)) {
+      Alert.alert('RUC incompleto', 'Ingresa los 13 dígitos del RUC para iniciar sesión.');
+      return;
+    }
+    if (!password.trim() || (authMode === 'register' && (!email.trim() || !name.trim()))) {
+      Alert.alert('Completa tus datos', authMode === 'register' ? 'Ingresa tu nombre, correo y contraseña para continuar.' : 'Ingresa tu RUC y contraseña para continuar.');
       return;
     }
     login(authRole);
@@ -49,7 +55,9 @@ export function AuthScreen() {
         <Notice>Simulación: los datos del PDF no se envían a un servicio OCR.</Notice>
       </> : null}
       {authMode === 'register' && authRole === 'CONTADOR_PROFESIONAL' ? <Field label="RUC profesional (opcional)" value={ruc} onChangeText={setRuc} placeholder="Número de identificación" keyboardType="numeric" /> : null}
-      <Field label="Correo electrónico" value={email} onChangeText={setEmail} placeholder="nombre@negocio.com" keyboardType="email-address" autoCapitalize="none" />
+      {authMode === 'login' && authRole !== 'SUPER_ADMIN' ? <Field label={identifierField.label} value={ruc} onChangeText={(value) => setRuc(value.replace(/\D/g, '').slice(0, 13))} placeholder={identifierField.placeholder} keyboardType={identifierField.keyboardType} autoCapitalize={identifierField.autoCapitalize} /> : null}
+      {authMode === 'login' && authRole === 'SUPER_ADMIN' ? <Field label={identifierField.label} value={ruc} onChangeText={setRuc} placeholder={identifierField.placeholder} keyboardType={identifierField.keyboardType} autoCapitalize={identifierField.autoCapitalize} /> : null}
+      {authMode === 'register' ? <Field label={identifierField.label} value={email} onChangeText={setEmail} placeholder={identifierField.placeholder} keyboardType={identifierField.keyboardType} autoCapitalize={identifierField.autoCapitalize} /> : null}
       <Field label="Contraseña" value={password} onChangeText={setPassword} placeholder="Mínimo 8 caracteres" secureTextEntry />
       <Button title={authMode === 'login' ? 'Entrar a mi cuenta' : 'Crear cuenta'} onPress={submit} />
       <Pressable style={styles.switchMode} onPress={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}><Text style={styles.switchText}>{authMode === 'login' ? '¿Aún no tienes cuenta? ' : '¿Ya tienes cuenta? '}<Text style={styles.switchLink}>{authMode === 'login' ? 'Regístrate' : 'Inicia sesión'}</Text></Text></Pressable>

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { formatDueDate, getDueDayFromRuc, getNextDueDate } from './taxCalendar';
 import { getDocumentStatusLabel, getEmissionBlocker } from './documentStatus';
 import { calculateAdminStats } from './adminStats';
+import { getAccessIdentifierField, isValidAccessRuc } from './accessIdentity';
 
 describe('cross-platform behavior contract', () => {
   it('calculates the ninth-digit statutory base due day and rejects incomplete RUCs', () => {
@@ -18,6 +19,13 @@ describe('cross-platform behavior contract', () => {
   it('uses the exact pending and approved emission labels', () => {
     expect(getDocumentStatusLabel('PENDIENTE_SRI')).toBe('Pendiente por aprobación del SRI');
     expect(getDocumentStatusLabel('APROBADO_ENVIADO')).toBe('Aprobado por el SRI y enviado');
+  });
+
+  it('uses RUC for login and email only for registration', () => {
+    expect(getAccessIdentifierField('login', 'CONTRIBUYENTE').label).toBe('RUC');
+    expect(getAccessIdentifierField('register', 'CONTRIBUYENTE').label).toBe('Correo electrónico');
+    expect(isValidAccessRuc('1792847592001')).toBe(true);
+    expect(isValidAccessRuc('contacto@negocio.com')).toBe(false);
   });
 
   it('requires one-time certificate and SRI profile setup before simulating transmission', () => {
