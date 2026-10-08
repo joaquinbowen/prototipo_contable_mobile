@@ -1,35 +1,45 @@
 {
-  "name": "mobile",
+  "name": "cont-marjo-mobile",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
     "expo": "~57.0.27",
     "expo-constants": "~57.0.21",
+    "expo-document-picker": "~57.0.3",
     "expo-font": "~57.0.4",
+    "expo-image-picker": "~57.0.20",
     "expo-linking": "~57.0.12",
     "expo-router": "~57.0.25",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "~57.0.3",
     "expo-web-browser": "~57.0.3",
+    "lucide-react-native": "^1.53.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
+    "react-native-svg": "15.15.4",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.3"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build:web": "expo export --platform web"
   },
+  "packageManager": "pnpm@10.30.3",
   "private": true
 }

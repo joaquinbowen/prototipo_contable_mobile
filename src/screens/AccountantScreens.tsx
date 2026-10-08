@@ -1,0 +1,91 @@
+import React, { useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { BriefcaseBusiness, FileCheck2, FileUp, ShieldAlert, UserRound, Users } from 'lucide-react-native';
+import { Button, Card, Field, Notice, Pill, Screen, SectionTitle, TitleBlock } from '../components/ui/primitives';
+import { clientPortfolio, opportunities, useApp } from '../state/AppState';
+import type { EvidenceType } from '../state/types';
+import { theme } from '../theme';
+
+const obligationTypes: EvidenceType[] = ['IVA mensual', 'Impuesto a la renta', 'ATS / anexo', 'Otra obligación'];
+
+export function AccountantOpportunitiesScreen() {
+  const { sentProposals, sendProposal } = useApp();
+  const [filter, setFilter] = useState<'open' | 'sent'>('open');
+  return <Screen><TitleBlock eyebrow="MARKETPLACE PROFESIONAL" title={filter === 'open' ? 'Oportunidades' : 'Mis propuestas'} subtitle={filter === 'open' ? 'Encargos publicados por contribuyentes. Envía tu cotización para iniciar el contacto.' : 'Aquí solo ves las propuestas que tú enviaste a tus clientes.'} />
+    <View style={styles.segment}><Pressable onPress={() => setFilter('open')} style={[styles.segmentButton, filter === 'open' && styles.segmentActive]}><Text style={[styles.segmentText, filter === 'open' && styles.segmentTextActive]}>Oportunidades</Text></Pressable><Pressable onPress={() => setFilter('sent')} style={[styles.segmentButton, filter === 'sent' && styles.segmentActive]}><Text style={[styles.segmentText, filter === 'sent' && styles.segmentTextActive]}>Mis propuestas ({sentProposals.length})</Text></Pressable></View>
+    {filter === 'open' ? <>
+      <Notice>Esta vista es del contador: solo aparecen encargos de clientes, no propuestas recibidas por contribuyentes.</Notice>
+      {opportunities.map((item) => <Card key={item.id}><View style={styles.opportunityHead}><View style={styles.opportunityIcon}><BriefcaseBusiness size={17} color={theme.brand} /></View><Pill tone="warning">Hasta {item.due}</Pill></View><Text style={styles.cardTitle}>{item.title}</Text><Text style={styles.muted}>Solicitado por {item.client}</Text><View style={styles.metaRow}><Pill>{item.category}</Pill><Text style={styles.price}>{item.budget} USD</Text></View><Button title={sentProposals.includes(item.id) ? 'Propuesta enviada' : 'Enviar mi propuesta'} variant={sentProposals.includes(item.id) ? 'secondary' : 'primary'} disabled={sentProposals.includes(item.id)} onPress={() => { sendProposal(item.id); Alert.alert('Propuesta enviada · demo', 'La cotización quedó en “Mis propuestas”.'); }} /></Card>)}
+    </> : sentProposals.length ? sentProposals.map((id) => { const item = opportunities.find((opp) => opp.id === id); return item ? <Card key={id}><Pill tone="good">Enviada · pendiente</Pill><Text style={styles.cardTitle}>{item.title}</Text><Text style={styles.muted}>Cliente: {item.client}</Text><View style={styles.metaRow}><Text style={styles.muted}>Tu cotización</Text><Text style={styles.price}>{item.budget} USD</Text></View><Notice>Esperando la respuesta del cliente · estado simulado.</Notice></Card> : null; }) : <Card><Text style={styles.cardTitle}>Aún no has enviado propuestas</Text><Text style={styles.muted}>Elige un encargo en “Oportunidades” y envía tu cotización.</Text><Button title="Ver oportunidades" onPress={() => setFilter('open')} /></Card>}
+  </Screen>;
+}
+
+export function AccountantClientsScreen() {
+  const { selectedClient, selectClient, evidence, addEvidence } = useApp();
+  const [obligation, setObligation] = useState<EvidenceType>('IVA mensual');
+  const [period, setPeriod] = useState('2026-09');
+  const [note, setNote] = useState('');
+  const [file, setFile] = useState<string | null>(null);
+  const clientEvidence = evidence.filter((item) => item.clientId === selectedClient?.id);
+
+  async function attachEvidence() {
+    const result = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'application/xml', 'text/xml'], copyToCacheDirectory: true });
+    if (!result.canceled && result.assets[0]) setFile(result.assets[0].name);
+  }
+
+  function saveEvidence() {
+    if (!file) { Alert.alert('Adjunta la evidencia', 'Elige el PDF o XML que recibiste del cliente.'); return; }
+    if (!period.trim()) { Alert.alert('Indica el período', 'Escribe el mes o año al que corresponde la declaración.'); return; }
+    addEvidence({ obligation, period, fileName: file, note: note.trim() });
+    setNote(''); setFile(null);
+    Alert.alert('Evidencia recibida · demo', 'El archivo quedó registrado en el expediente local del cliente.');
+  }
+
+  return <Screen><TitleBlock eyebrow="CARTERA PROFESIONAL" title={selectedClient ? selectedClient.name : 'Mis clientes'} subtitle={selectedClient ? `RUC ${selectedClient.ruc} · ${selectedClient.regime}` : 'Revisa obligaciones y registra la evidencia de lo que presentaste por cada cliente.'} />
+    {selectedClient ? <>
+      <Button title="Volver a la cartera" variant="secondary" onPress={() => { selectClient(null); setFile(null); }} icon={<Users size={16} color={theme.brand} />} />
+      <Notice tone="warning">Expediente de demostración. Adjunta el comprobante de la declaración presentada, como IVA mensual o impuesto a la renta.</Notice>
+      <Card><View style={styles.opportunityHead}><FileCheck2 size={18} color={theme.brand} /><Text style={[styles.cardTitle, { flex: 1 }]}>Registrar evidencia presentada</Text></View>
+        <Text style={styles.label}>Tipo de obligación</Text><View style={styles.choiceWrap}>{obligationTypes.map((type) => <Pressable key={type} onPress={() => setObligation(type)} style={[styles.choiceChip, obligation === type && styles.choiceChipActive]}><Text style={[styles.choiceChipText, obligation === type && styles.choiceChipTextActive]}>{type}</Text></Pressable>)}</View>
+        <Field label="Período de la declaración" value={period} onChangeText={setPeriod} placeholder="Ej. 2026-09 o ejercicio 2025" />
+        <Field label="Nota de trabajo (opcional)" value={note} onChangeText={setNote} placeholder="Observación para el expediente" multiline />
+        <Button title={file ? `Adjunto · ${file}` : 'Adjuntar archivo PDF o XML'} variant="secondary" onPress={attachEvidence} icon={<FileUp size={16} color={theme.brand} />} />
+        <Button title="Guardar evidencia en el expediente" onPress={saveEvidence} />
+        <Notice>Archivo guardado solo en el estado de esta demo; no se sube a un servidor.</Notice>
+      </Card>
+      <SectionTitle title="Evidencia registrada" />
+      {clientEvidence.length ? clientEvidence.map((item) => <Card key={item.id}><View style={styles.opportunityHead}><Pill tone="good">Recibida · {item.receivedAt}</Pill><FileCheck2 size={17} color={theme.success} /></View><Text style={styles.cardTitle}>{item.obligation} · {item.period}</Text><Text style={styles.muted}>{item.fileName}</Text>{item.note ? <Text style={styles.muted}>{item.note}</Text> : null}</Card>) : <Card><Text style={styles.cardTitle}>Todavía no hay evidencia</Text><Text style={styles.muted}>Registra aquí el archivo de la última declaración o anexo presentado.</Text></Card>}
+    </> : <>
+      <View style={styles.statsLine}><Card style={styles.statCard}><Text style={styles.statNumber}>{clientPortfolio.length}</Text><Text style={styles.muted}>Clientes activos · demo</Text></Card><Card style={styles.statCard}><Text style={[styles.statNumber, { color: theme.warning }]}>3</Text><Text style={styles.muted}>Obligaciones próximas</Text></Card></View>
+      {clientPortfolio.map((client) => <Card key={client.id}><View style={styles.clientHead}><View style={styles.clientIcon}><UserRound size={17} color={theme.brand} /></View><View style={{ flex: 1 }}><Text style={styles.cardTitle}>{client.name}</Text><Text style={styles.muted}>RUC {client.ruc} · {client.regime}</Text></View><Pill tone="warning">Próximo</Pill></View><View style={styles.clientObligation}><ShieldAlert size={15} color={theme.warning} /><Text style={styles.obligationText}>{client.next} · vence {client.due}</Text></View><Button compact title="Abrir expediente y cargar evidencia" onPress={() => { selectClient(client); setFile(null); }} /></Card>)}
+    </>}
+  </Screen>;
+}
+
+const styles = StyleSheet.create({
+  segment: { padding: 3, flexDirection: 'row', alignSelf: 'flex-start', gap: 3, borderRadius: 13, backgroundColor: theme.surfaceMuted },
+  segmentButton: { minHeight: 36, paddingHorizontal: 11, justifyContent: 'center', borderRadius: 10 },
+  segmentActive: { backgroundColor: theme.surface },
+  segmentText: { color: theme.muted, fontSize: 11, fontWeight: '600' },
+  segmentTextActive: { color: theme.brandDark },
+  opportunityHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  opportunityIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.brandSoft },
+  cardTitle: { color: theme.ink, fontSize: 14, lineHeight: 20, fontWeight: '700' },
+  muted: { color: theme.muted, fontSize: 12, lineHeight: 18 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  price: { color: theme.brandDark, fontSize: 15, fontWeight: '700' },
+  statsLine: { flexDirection: 'row', gap: 9 },
+  statCard: { flex: 1, alignItems: 'flex-start' },
+  statNumber: { color: theme.brand, fontSize: 24, fontWeight: '800' },
+  clientHead: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  clientIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: theme.brandSoft, alignItems: 'center', justifyContent: 'center' },
+  clientObligation: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 5 },
+  obligationText: { flex: 1, color: theme.warning, fontSize: 12, fontWeight: '600' },
+  label: { color: theme.ink, fontSize: 13, fontWeight: '600' },
+  choiceWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  choiceChip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: theme.line, backgroundColor: theme.surface },
+  choiceChipActive: { borderColor: theme.brand, backgroundColor: theme.brandSoft },
+  choiceChipText: { color: theme.muted, fontSize: 11, fontWeight: '600' },
+  choiceChipTextActive: { color: theme.brandDark },
+});
