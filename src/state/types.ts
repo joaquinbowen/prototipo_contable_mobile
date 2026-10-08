@@ -16,7 +16,45 @@ export interface MobileDocument {
   customer: string;
   date: string;
   total: number;
-  status: 'AUTORIZADO · demo' | 'BORRADOR · demo';
+  status: import('./documentStatus').EmissionStatus;
+  signedAutomatically: boolean;
+  demoAccessKey: string;
+}
+
+export interface MobileTaxpayerProfile {
+  ruc: string;
+  razonSocial: string;
+  nombreComercial: string;
+  regimen: string;
+  actividades: string;
+  establecimiento: string;
+  obligaciones: string[];
+  address: string;
+}
+
+export interface MobileChatMessage {
+  id: string;
+  sender: 'CONTRIBUYENTE' | 'CONTADOR';
+  text: string;
+  sentAt: string;
+}
+
+export interface MobileMarketplaceOffer {
+  id: string;
+  accountantName: string;
+  price: number;
+  estimatedTime: string;
+  message: string;
+  accepted: boolean;
+}
+
+export interface MobileMarketplaceRequest {
+  id: string;
+  title: string;
+  description: string;
+  budget: string;
+  offers: MobileMarketplaceOffer[];
+  acceptedOfferId: string | null;
 }
 
 export interface MobileInventoryItem {
@@ -25,6 +63,21 @@ export interface MobileInventoryItem {
   code: string;
   stock: number;
   cost: number;
+}
+
+export interface MobileExpense {
+  id: string;
+  supplier: string;
+  concept: string;
+  total: number;
+}
+
+export interface MobilePayable {
+  id: string;
+  supplier: string;
+  total: number;
+  dueDate: string;
+  status: 'Pendiente · demo';
 }
 
 export interface MobileEvidence {
