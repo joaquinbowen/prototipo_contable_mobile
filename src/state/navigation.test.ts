@@ -11,9 +11,9 @@ describe('role navigation', () => {
     expect(getLandingTab('CONTRIBUYENTE')).toBe('home');
     expect(getTabsForRole('CONTRIBUYENTE').map((tab) => tab.key)).toEqual([
       'home',
-      'documents',
       'workspace',
-      'profile',
+      'documents',
+      'more',
     ]);
   });
 
@@ -23,7 +23,7 @@ describe('role navigation', () => {
       'home',
       'opportunities',
       'clients',
-      'profile',
+      'more',
     ]);
   });
 
@@ -32,7 +32,7 @@ describe('role navigation', () => {
       'home',
       'users',
       'services',
-      'profile',
+      'more',
     ]);
   });
 });

@@ -1,13 +1,19 @@
 import React from 'react';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useApp } from '../../state/AppState';
+import { MobileAppHeader } from '../MobileAppHeader';
 import { theme, radius } from '../../theme';
 
 export function Screen({ children, scroll = true }: PropsWithChildren<{ scroll?: boolean }>) {
+  const { isAuthenticated } = useApp();
   return (
-    <SafeAreaView edges={['top']} style={styles.safe}>
-      {scroll ? <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>{children}</ScrollView> : <View style={styles.fill}>{children}</View>}
+    <SafeAreaView edges={['top']} style={[styles.safe, isAuthenticated && styles.authenticatedSafe]}>
+      <StatusBar style={isAuthenticated ? 'light' : 'dark'} />
+      {isAuthenticated ? <MobileAppHeader /> : null}
+      {scroll ? <ScrollView style={styles.pageCanvas} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>{children}</ScrollView> : <View style={[styles.fill, styles.pageCanvas]}>{children}</View>}
     </SafeAreaView>
   );
 }
@@ -32,7 +38,7 @@ export function Button({ title, onPress, variant = 'primary', disabled = false, 
   return <Pressable accessibilityRole="button" disabled={disabled || loading} onPress={onPress} style={({ pressed }) => [styles.button, compact && styles.buttonCompact, styles[`button_${variant}`], (disabled || loading) && styles.disabled, pressed && !disabled && !loading && styles.pressed]}><>{icon}{loading ? <ActivityIndicator size="small" color={variant === 'primary' ? '#fff' : theme.brand} /> : <Text style={[styles.buttonText, styles[`buttonText_${variant}`], compact && styles.buttonTextCompact]}>{title}</Text>}</></Pressable>;
 }
 
-export function Field({ label, value, onChangeText, placeholder, keyboardType, multiline = false, secureTextEntry = false, autoCapitalize }: {
+export function Field({ label, value, onChangeText, placeholder, keyboardType, multiline = false, secureTextEntry = false, autoCapitalize, disabled = false }: {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
@@ -41,8 +47,9 @@ export function Field({ label, value, onChangeText, placeholder, keyboardType, m
   multiline?: boolean;
   secureTextEntry?: boolean;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  disabled?: boolean;
 }) {
-  return <View style={styles.field}><Text style={styles.label}>{label}</Text><TextInput accessibilityLabel={label} value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={theme.subtle} keyboardType={keyboardType} multiline={multiline} secureTextEntry={secureTextEntry} autoCapitalize={autoCapitalize} style={[styles.input, multiline && styles.multiline]} /></View>;
+  return <View style={styles.field}><Text style={styles.label}>{label}</Text><TextInput accessibilityLabel={label} value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={theme.subtle} keyboardType={keyboardType} multiline={multiline} secureTextEntry={secureTextEntry} autoCapitalize={autoCapitalize} editable={!disabled} style={[styles.input, multiline && styles.multiline, disabled && styles.inputDisabled]} /></View>;
 }
 
 export function Notice({ children, tone = 'info' }: PropsWithChildren<{ tone?: 'info' | 'warning' | 'success' }>) {
@@ -67,7 +74,9 @@ export function Stat({ value, label, accent = false }: { value: string; label: s
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.canvas },
+  authenticatedSafe: { backgroundColor: theme.brandDark },
   fill: { flex: 1 },
+  pageCanvas: { backgroundColor: theme.canvas },
   content: { paddingHorizontal: 19, paddingTop: 18, paddingBottom: 32, gap: 18 },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
   titleCopy: { flex: 1, gap: 5 },
@@ -92,6 +101,7 @@ const styles = StyleSheet.create({
   field: { gap: 7 },
   label: { color: theme.ink, fontSize: 13, fontWeight: '600' },
   input: { minHeight: 48, paddingHorizontal: 13, paddingVertical: 11, borderWidth: 1, borderColor: theme.line, borderRadius: radius.control, color: theme.ink, backgroundColor: theme.surface, fontSize: 15 },
+  inputDisabled: { backgroundColor: theme.surfaceMuted, color: theme.muted },
   multiline: { minHeight: 88, textAlignVertical: 'top' },
   notice: { borderWidth: 1, borderRadius: 14, padding: 13 },
   noticeText: { fontSize: 13, lineHeight: 19, fontWeight: '500' },

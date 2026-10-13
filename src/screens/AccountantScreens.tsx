@@ -1,23 +1,34 @@
 import React, { useState } from 'react';
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import type { Href } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { BriefcaseBusiness, FileCheck2, FileUp, ShieldAlert, UserRound, Users } from 'lucide-react-native';
-import { Button, Card, Field, Notice, Pill, Screen, SectionTitle, TitleBlock } from '../components/ui/primitives';
+import { Button, Card, Field, Notice, Pill, Screen, SectionTitle, Stat, TitleBlock } from '../components/ui/primitives';
 import { clientPortfolio, opportunities, useApp } from '../state/AppState';
 import type { EvidenceType } from '../state/types';
 import { theme } from '../theme';
 
 const obligationTypes: EvidenceType[] = ['IVA mensual', 'Impuesto a la renta', 'ATS / anexo', 'Otra obligación'];
+const spanishMonths: Record<string, number> = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11 };
+function daysUntil(dateLabel: string) {
+  const match = dateLabel.toLowerCase().match(/(\d{1,2})\s+([a-z]{3})\s+(\d{4})/);
+  if (!match || spanishMonths[match[2]] === undefined) return null;
+  const due = new Date(Number(match[3]), spanishMonths[match[2]], Number(match[1]));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.ceil((due.getTime() - today.getTime()) / 86400000);
+}
 
-export function AccountantOpportunitiesScreen() {
-  const { sentProposals, sendProposal, marketplaceRequests, chatMessages, sendChatMessage } = useApp();
-  const [filter, setFilter] = useState<'open' | 'sent'>('open');
+export function AccountantOpportunitiesScreen({ section = 'open' }: { section?: 'open' | 'sent' }) {
+  const { sentProposals, sendProposal, marketplaceRequests, chatMessages, sendChatMessage, setActiveModule } = useApp();
+  const filter = section;
   const [requestId, setRequestId] = useState<string | null>(null);
   const [price, setPrice] = useState('45');
   const [estimatedTime, setEstimatedTime] = useState('2 días');
   const [proposalMessage, setProposalMessage] = useState('Revisaré los comprobantes y te compartiré el resumen del trámite.');
   const [chatDraft, setChatDraft] = useState('');
   const selectedRequest = marketplaceRequests.find((item) => item.id === requestId) ?? null;
+  const availableRequests = marketplaceRequests.filter((item) => !item.acceptedOfferId && !sentProposals.includes(item.id));
 
   function submitOffer() {
     const amount = Number(price.replace(',', '.'));
@@ -31,13 +42,35 @@ export function AccountantOpportunitiesScreen() {
   }
 
   return <Screen><TitleBlock eyebrow="MARKETPLACE PROFESIONAL" title={filter === 'open' ? 'Oportunidades' : 'Mis propuestas'} subtitle={filter === 'open' ? 'Encargos publicados por contribuyentes. Envía tu cotización para iniciar el contacto.' : 'Aquí solo ves las propuestas que tú enviaste a tus clientes.'} />
-    <View style={styles.segment}><Pressable onPress={() => setFilter('open')} style={[styles.segmentButton, filter === 'open' && styles.segmentActive]}><Text style={[styles.segmentText, filter === 'open' && styles.segmentTextActive]}>Oportunidades</Text></Pressable><Pressable onPress={() => setFilter('sent')} style={[styles.segmentButton, filter === 'sent' && styles.segmentActive]}><Text style={[styles.segmentText, filter === 'sent' && styles.segmentTextActive]}>Mis propuestas ({sentProposals.length})</Text></Pressable></View>
     {filter === 'open' ? <>
       <Notice>Esta vista es del contador: solo aparecen encargos de clientes, no propuestas recibidas por contribuyentes.</Notice>
-      {marketplaceRequests.map((item) => <Card key={item.id}><View style={styles.opportunityHead}><View style={styles.opportunityIcon}><BriefcaseBusiness size={17} color={theme.brand} /></View><Pill tone="warning">{item.offers.length} propuestas</Pill></View><Text style={styles.cardTitle}>{item.title}</Text><Text style={styles.muted}>{item.description}</Text><View style={styles.metaRow}><Pill>Solicitud de contribuyente</Pill><Text style={styles.price}>{item.budget} USD</Text></View><Button title={sentProposals.includes(item.id) ? 'Propuesta enviada' : 'Preparar propuesta'} variant={sentProposals.includes(item.id) ? 'secondary' : 'primary'} disabled={sentProposals.includes(item.id)} onPress={() => setRequestId(item.id)} /></Card>)}
-    </> : sentProposals.length ? sentProposals.map((id) => { const item = marketplaceRequests.find((request) => request.id === id); const offer = item?.offers.find((entry) => entry.accountantName === 'Estudio contable demo'); return item && offer ? <Card key={id}><Pill tone={offer.accepted ? 'good' : 'warning'}>{offer.accepted ? 'Aceptada · demo' : 'Enviada · pendiente'}</Pill><Text style={styles.cardTitle}>{item.title}</Text><Text style={styles.muted}>Tu propuesta para la solicitud del contribuyente</Text><View style={styles.metaRow}><Text style={styles.muted}>{offer.estimatedTime}</Text><Text style={styles.price}>${offer.price.toFixed(2)}</Text></View><Text style={styles.muted}>{offer.message}</Text><Notice>{offer.accepted ? 'El cliente aceptó esta propuesta.' : 'Esperando la respuesta del cliente · estado simulado.'}</Notice></Card> : null; }) : <Card><Text style={styles.cardTitle}>Aún no has enviado propuestas</Text><Text style={styles.muted}>Elige un encargo en “Oportunidades” y envía tu cotización.</Text><Button title="Ver oportunidades" onPress={() => setFilter('open')} /></Card>}
+      {availableRequests.length ? availableRequests.map((item) => <Card key={item.id}><View style={styles.opportunityHead}><View style={styles.opportunityIcon}><BriefcaseBusiness size={17} color={theme.brand} /></View><Pill tone="warning">{item.offers.length} propuestas</Pill></View><Text style={styles.cardTitle}>{item.title}</Text><Text style={styles.muted}>{item.description}</Text><View style={styles.metaRow}><Pill>Solicitud de contribuyente</Pill><Text style={styles.price}>{item.budget} USD</Text></View><Button title="Preparar propuesta" onPress={() => setRequestId(item.id)} /></Card>) : <Card><Text style={styles.cardTitle}>No hay oportunidades disponibles</Text><Text style={styles.muted}>{marketplaceRequests.length ? 'Las solicitudes visibles ya tienen una propuesta tuya o fueron contratadas.' : 'Cuando un contribuyente publique un encargo, aparecerá aquí.'}</Text></Card>}
+    </> : sentProposals.length ? sentProposals.map((id) => { const item = marketplaceRequests.find((request) => request.id === id); const offer = item?.offers.find((entry) => entry.accountantName === 'Estudio contable demo'); return item && offer ? <Card key={id}><Pill tone={offer.accepted ? 'good' : 'warning'}>{offer.accepted ? 'Aceptada · demo' : 'Enviada · pendiente'}</Pill><Text style={styles.cardTitle}>{item.title}</Text><Text style={styles.muted}>Tu propuesta para la solicitud del contribuyente</Text><View style={styles.metaRow}><Text style={styles.muted}>{offer.estimatedTime}</Text><Text style={styles.price}>${offer.price.toFixed(2)}</Text></View><Text style={styles.muted}>{offer.message}</Text><Notice>{offer.accepted ? 'El cliente aceptó esta propuesta.' : 'Esperando la respuesta del cliente · estado simulado.'}</Notice></Card> : null; }) : <Card><Text style={styles.cardTitle}>Aún no has enviado propuestas</Text><Text style={styles.muted}>Elige un encargo en “Oportunidades” y envía tu cotización.</Text><Button title="Ver oportunidades" onPress={() => { setActiveModule('marketplace'); router.push('/(tabs)/module' as Href); }} /></Card>}
     {filter === 'sent' && sentProposals.some((id) => marketplaceRequests.find((request) => request.id === id)?.acceptedOfferId) ? <Card><Text style={styles.cardTitle}>Conversación con el cliente</Text>{chatMessages.length ? chatMessages.map((message) => <View key={message.id} style={styles.chatMessage}><Text style={styles.muted}>{message.sender === 'CONTADOR' ? 'Tú' : 'Contribuyente'} · {message.sentAt}</Text><Text style={styles.cardTitle}>{message.text}</Text></View>) : <Text style={styles.muted}>Aún no hay mensajes. Coordina aquí el trabajo aceptado.</Text>}<Field label="Mensaje" value={chatDraft} onChangeText={setChatDraft} placeholder="Escribe un mensaje" /><Button title="Enviar mensaje" disabled={!chatDraft.trim()} onPress={() => { sendChatMessage(chatDraft); setChatDraft(''); }} /><Notice>La conversación es local y de demostración.</Notice></Card> : null}
     <Modal visible={Boolean(selectedRequest)} animationType="slide" transparent onRequestClose={() => setRequestId(null)}><View style={styles.modalBackdrop}><View style={styles.proposalSheet}><Text style={styles.cardTitle}>Tu propuesta</Text><Text style={styles.muted}>{selectedRequest?.title}</Text><Field label="Tarifa · USD" value={price} onChangeText={setPrice} keyboardType="numeric" /><Field label="Tiempo estimado" value={estimatedTime} onChangeText={setEstimatedTime} placeholder="Ej. 2 días" /><Field label="Mensaje al cliente" value={proposalMessage} onChangeText={setProposalMessage} multiline /><View style={styles.metaRow}><Button compact title="Cancelar" variant="secondary" onPress={() => setRequestId(null)} /><Button compact title="Enviar propuesta" onPress={submitOffer} /></View><Notice>La propuesta queda visible al contribuyente en esta demostración.</Notice></View></View></Modal>
+  </Screen>;
+}
+
+export function AccountantDashboardScreen() {
+  const { selectClient, setActiveModule } = useApp();
+  const [query, setQuery] = useState('');
+  const [alertFilter, setAlertFilter] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
+  const clientsWithDue = clientPortfolio.map((client) => ({ ...client, days: daysUntil(client.due) }));
+  const criticalCount = clientsWithDue.filter((client) => client.days !== null && client.days < 0).length;
+  const upcomingCount = clientsWithDue.filter((client) => client.days !== null && client.days >= 0 && client.days <= 15).length;
+  const visibleClients = clientsWithDue.filter((client) => `${client.name} ${client.ruc}`.toLowerCase().includes(query.trim().toLowerCase()) && (alertFilter === 'TODOS' || alertFilter === 'VENCIDOS' && client.days !== null && client.days < 0 || alertFilter === 'PROXIMOS' && client.days !== null && client.days >= 0 && client.days <= 15 || alertFilter === 'AL_DIA' && (client.days === null || client.days > 15)));
+
+  return <Screen><TitleBlock eyebrow="ESPACIO PROFESIONAL · DEMO" title="Resumen del contador" subtitle="Revisa obligaciones de ejemplo, abre expedientes y registra la evidencia de tus declaraciones." />
+    <View style={styles.dashboardStats}><Stat value={String(clientPortfolio.length)} label="Clientes de ejemplo en cartera" accent /><Stat value={String(upcomingCount)} label="Vencen en los próximos 15 días" /><Stat value={String(criticalCount)} label="Vencimientos pasados" /></View>
+    <View style={styles.segment}>{([{ id: 'TODOS', label: 'Todos' }, { id: 'VENCIDOS', label: `Vencidos · ${criticalCount}` }, { id: 'PROXIMOS', label: `Próximos · ${upcomingCount}` }, { id: 'AL_DIA', label: 'Más adelante' }] as const).map((item) => <Pressable key={item.id} accessibilityRole="tab" accessibilityState={{ selected: alertFilter === item.id }} onPress={() => setAlertFilter(item.id)} style={[styles.segmentButton, alertFilter === item.id && styles.segmentActive]}><Text style={[styles.segmentText, alertFilter === item.id && styles.segmentTextActive]}>{item.label}</Text></Pressable>)}</View>
+    <Card><SectionTitle title="Estado de obligaciones de ejemplo" />
+      {clientsWithDue.map((client) => { const overdue = client.days !== null && client.days < 0; const soon = client.days !== null && client.days <= 15; return <View key={client.id} style={styles.obligationRow}><View style={[styles.statusDot, overdue ? styles.statusCritical : soon ? styles.statusWarning : styles.statusGood]} /><View style={styles.obligationCopy}><Text style={styles.cardTitle}>{client.name}</Text><Text style={styles.muted}>{client.next} · vence {client.due}</Text></View><Pill tone={overdue || soon ? 'warning' : 'good'}>{overdue ? `Vencida · ${Math.abs(client.days!)} d` : soon ? `En ${client.days} d` : 'Más adelante'}</Pill></View>; })}
+      <Notice>Confirma los vencimientos reales con el SRI. Estas fechas pertenecen a los datos locales de demostración.</Notice>
+    </Card>
+    <Card><View style={styles.portfolioHeading}><View style={styles.portfolioCopy}><Text style={styles.cardTitle}>Cartera de clientes</Text><Text style={styles.muted}>Abre un expediente para revisar obligaciones y adjuntar evidencia.</Text></View><Text style={styles.portfolioCount}>{visibleClients.length}</Text></View>
+      <Field label="Buscar por razón social o RUC" value={query} onChangeText={setQuery} placeholder="Nombre o número de RUC" />
+      {visibleClients.length ? visibleClients.map((client) => <Pressable key={client.id} accessibilityRole="button" onPress={() => { selectClient(client); setActiveModule('client_workspace'); router.push('/(tabs)/module' as Href); }}><View style={styles.clientRow}><View style={styles.clientInfo}><Text style={styles.cardTitle}>{client.name}</Text><Text style={styles.muted}>RUC {client.ruc} · {client.regime}</Text><Text style={client.days !== null && client.days < 0 ? styles.clientNextOverdue : styles.clientNext}>{client.next} · {client.days !== null && client.days < 0 ? `vencida hace ${Math.abs(client.days)} días` : `vence ${client.due}`}</Text></View><Text style={styles.clientAction}>Abrir ›</Text></View></Pressable>) : <Text style={styles.muted}>No hay clientes que coincidan con ese filtro.</Text>}
+    </Card>
   </Screen>;
 }
 
@@ -48,6 +81,7 @@ export function AccountantClientsScreen() {
   const [note, setNote] = useState('');
   const [file, setFile] = useState<string | null>(null);
   const clientEvidence = evidence.filter((item) => item.clientId === selectedClient?.id);
+  const dueSoonCount = clientPortfolio.filter((client) => { const days = daysUntil(client.due); return days !== null && days <= 15; }).length;
 
   async function attachEvidence() {
     const result = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'application/xml', 'text/xml'], copyToCacheDirectory: true });
@@ -77,13 +111,19 @@ export function AccountantClientsScreen() {
       <SectionTitle title="Evidencia registrada" />
       {clientEvidence.length ? clientEvidence.map((item) => <Card key={item.id}><View style={styles.opportunityHead}><Pill tone="good">Recibida · {item.receivedAt}</Pill><FileCheck2 size={17} color={theme.success} /></View><Text style={styles.cardTitle}>{item.obligation} · {item.period}</Text><Text style={styles.muted}>{item.fileName}</Text>{item.note ? <Text style={styles.muted}>{item.note}</Text> : null}</Card>) : <Card><Text style={styles.cardTitle}>Todavía no hay evidencia</Text><Text style={styles.muted}>Registra aquí el archivo de la última declaración o anexo presentado.</Text></Card>}
     </> : <>
-      <View style={styles.statsLine}><Card style={styles.statCard}><Text style={styles.statNumber}>{clientPortfolio.length}</Text><Text style={styles.muted}>Clientes activos · demo</Text></Card><Card style={styles.statCard}><Text style={[styles.statNumber, { color: theme.warning }]}>3</Text><Text style={styles.muted}>Obligaciones próximas</Text></Card></View>
-      {clientPortfolio.map((client) => <Card key={client.id}><View style={styles.clientHead}><View style={styles.clientIcon}><UserRound size={17} color={theme.brand} /></View><View style={{ flex: 1 }}><Text style={styles.cardTitle}>{client.name}</Text><Text style={styles.muted}>RUC {client.ruc} · {client.regime}</Text></View><Pill tone="warning">Próximo</Pill></View><View style={styles.clientObligation}><ShieldAlert size={15} color={theme.warning} /><Text style={styles.obligationText}>{client.next} · vence {client.due}</Text></View><Button compact title="Abrir expediente y cargar evidencia" onPress={() => { selectClient(client); setFile(null); }} /></Card>)}
+      <View style={styles.statsLine}><Card style={styles.statCard}><Text style={styles.statNumber}>{clientPortfolio.length}</Text><Text style={styles.muted}>Clientes activos · demo</Text></Card><Card style={styles.statCard}><Text style={[styles.statNumber, { color: theme.warning }]}>{dueSoonCount}</Text><Text style={styles.muted}>Obligaciones en 15 días</Text></Card></View>
+      {clientPortfolio.map((client) => { const days = daysUntil(client.due); const overdue = days !== null && days < 0; const evidenceCount = evidence.filter((item) => item.clientId === client.id).length; return <Card key={client.id}><View style={styles.clientHead}><View style={styles.clientIcon}><UserRound size={17} color={theme.brand} /></View><View style={{ flex: 1 }}><Text style={styles.cardTitle}>{client.name}</Text><Text style={styles.muted}>RUC {client.ruc} · {client.regime}</Text></View><Pill tone={overdue ? 'warning' : 'neutral'}>{overdue ? 'Vencida' : days !== null && days <= 15 ? 'Próxima' : 'Más adelante'}</Pill></View><View style={styles.clientObligation}><ShieldAlert size={15} color={overdue ? theme.danger : theme.warning} /><Text style={styles.obligationText}>{client.next} · {overdue ? `venció hace ${Math.abs(days!)} días` : `vence ${client.due}`}</Text></View><Text style={styles.muted}>{evidenceCount} respaldos registrados en el expediente.</Text><Button compact title="Abrir expediente y cargar evidencia" onPress={() => { selectClient(client); setFile(null); }} /></Card>; })}
     </>}
   </Screen>;
 }
 
 const styles = StyleSheet.create({
+  dashboardStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  obligationRow: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, borderTopWidth: 1, borderTopColor: theme.line },
+  statusDot: { width: 10, height: 10, borderRadius: 5 }, statusCritical: { backgroundColor: theme.danger }, statusWarning: { backgroundColor: theme.warning }, statusGood: { backgroundColor: theme.success },
+  obligationCopy: { flex: 1, gap: 2 },
+  portfolioHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 }, portfolioCopy: { flex: 1, gap: 4 }, portfolioCount: { color: theme.brand, fontSize: 23, fontWeight: '800' },
+  clientRow: { minHeight: 78, flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, borderTopColor: theme.line }, clientInfo: { flex: 1, gap: 2 }, clientNext: { color: theme.warning, fontSize: 11, fontWeight: '600' }, clientNextOverdue: { color: theme.danger, fontSize: 11, fontWeight: '700' }, clientAction: { color: theme.brand, fontSize: 12, fontWeight: '800' },
   segment: { padding: 3, flexDirection: 'row', alignSelf: 'flex-start', gap: 3, borderRadius: 13, backgroundColor: theme.surfaceMuted },
   segmentButton: { minHeight: 36, paddingHorizontal: 11, justifyContent: 'center', borderRadius: 10 },
   segmentActive: { backgroundColor: theme.surface },

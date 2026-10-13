@@ -1,7 +1,7 @@
 import { router, Tabs } from 'expo-router';
 import React, { useEffect } from 'react';
 import type { ColorValue } from 'react-native';
-import { FileText, LayoutDashboard, PackageSearch, ShieldCheck, Store, UserRound, Users } from 'lucide-react-native';
+import { BarChart3, FileText, LayoutDashboard, MoreHorizontal, ShieldCheck, Store, UserRound, Users } from 'lucide-react-native';
 import type { ComponentProps } from 'react';
 import { useApp } from '../../state/AppState';
 import { getTabsForRole } from '../../state/navigation';
@@ -12,17 +12,21 @@ type IconComponent = React.ComponentType<{ size?: number; color?: string; stroke
 const icons: Record<MobileTabKey, IconComponent> = {
   home: LayoutDashboard,
   documents: FileText,
-  workspace: PackageSearch,
+  workspace: BarChart3,
   profile: UserRound,
   opportunities: Store,
   clients: Users,
   users: Users,
   services: ShieldCheck,
+    more: MoreHorizontal,
 };
 
 export default function TabLayout() {
-  const { activeRole, isAuthenticated } = useApp();
-  const tabs = getTabsForRole(activeRole);
+  const { activeRole, isAuthenticated, professionalVerification } = useApp();
+  const roleTabs = getTabsForRole(activeRole);
+  const tabs = activeRole === 'CONTADOR_PROFESIONAL' && professionalVerification !== 'VERIFICADO'
+    ? roleTabs.filter((tab) => tab.key === 'home' || tab.key === 'more')
+    : roleTabs;
   const titles: Record<MobileTabKey, string> = Object.fromEntries(tabs.map((tab) => [tab.key, tab.label])) as Record<MobileTabKey, string>;
   const visible = (key: MobileTabKey) => tabs.some((tab) => tab.key === key);
   useEffect(() => { if (!isAuthenticated) router.replace('/login'); }, [isAuthenticated]);
@@ -41,12 +45,18 @@ export default function TabLayout() {
 
   return <Tabs screenOptions={common}>
     <Tabs.Screen name="index" options={{ title: titles.home ?? 'Inicio', tabBarIcon: icon('home'), href: visible('home') ? undefined : null }} />
+    <Tabs.Screen name="workspace" options={{ title: titles.workspace ?? 'Mi negocio', tabBarIcon: icon('workspace'), href: visible('workspace') ? '/(tabs)/workspace' : null }} />
     <Tabs.Screen name="documents" options={{ title: titles.documents ?? 'Documentos', tabBarIcon: icon('documents'), href: visible('documents') ? '/(tabs)/documents' : null }} />
-    <Tabs.Screen name="workspace" options={{ title: titles.workspace ?? 'Gestión', tabBarIcon: icon('workspace'), href: visible('workspace') ? '/(tabs)/workspace' : null }} />
     <Tabs.Screen name="opportunities" options={{ title: titles.opportunities ?? 'Oportunidades', tabBarIcon: icon('opportunities'), href: visible('opportunities') ? '/(tabs)/opportunities' : null }} />
     <Tabs.Screen name="clients" options={{ title: titles.clients ?? 'Clientes', tabBarIcon: icon('clients'), href: visible('clients') ? '/(tabs)/clients' : null }} />
     <Tabs.Screen name="users" options={{ title: titles.users ?? 'Usuarios', tabBarIcon: icon('users'), href: visible('users') ? '/(tabs)/users' : null }} />
     <Tabs.Screen name="services" options={{ title: titles.services ?? 'Servicios', tabBarIcon: icon('services'), href: visible('services') ? '/(tabs)/services' : null }} />
     <Tabs.Screen name="profile" options={{ title: titles.profile ?? 'Perfil', tabBarIcon: icon('profile'), href: visible('profile') ? '/(tabs)/profile' : null }} />
+    <Tabs.Screen name="more" options={{ title: 'Menú', tabBarIcon: icon('more'), href: visible('more') ? '/(tabs)/more' : null }} />
+    <Tabs.Screen name="module" options={{ href: null }} />
+    <Tabs.Screen name="purchases" options={{ href: null }} />
+    <Tabs.Screen name="inventory" options={{ href: null }} />
+    <Tabs.Screen name="calendar" options={{ href: null }} />
+    <Tabs.Screen name="marketplace" options={{ href: null }} />
   </Tabs>;
 }

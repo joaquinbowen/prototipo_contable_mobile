@@ -12,12 +12,12 @@ interface AdminStatsInput {
 }
 
 export function calculateAdminStats(input: AdminStatsInput) {
-  const usersByRole: Record<UserRole, number> = {
+  const usersByRole: Record<Exclude<UserRole, 'GESTOR_CONTADORES'>, number> = {
     CONTRIBUYENTE: 0,
     CONTADOR_PROFESIONAL: 0,
     SUPER_ADMIN: 0,
   };
-  input.users.forEach(({ role }) => { usersByRole[role] += 1; });
+  input.users.forEach(({ role }) => { if (role !== 'GESTOR_CONTADORES') usersByRole[role] += 1; });
 
   const documentsByStatus: Record<EmissionStatus, number> = {
     BORRADOR: 0,

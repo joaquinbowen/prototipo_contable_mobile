@@ -1,3 +1,5 @@
 import React from 'react';
 import { AccountantOpportunitiesScreen } from '../../screens/AccountantScreens';
-export default function OpportunitiesRoute() { return <AccountantOpportunitiesScreen />; }
+import { VerificationScreen } from '../../screens/ParityScreens';
+import { useApp } from '../../state/AppState';
+export default function OpportunitiesRoute() { const { professionalVerification } = useApp(); return professionalVerification === 'VERIFICADO' ? <AccountantOpportunitiesScreen /> : <VerificationScreen />; }

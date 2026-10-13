@@ -8,23 +8,29 @@ import { useApp } from '../state/AppState';
 import { getRouteForSession } from '../state/navigation';
 import { theme } from '../theme';
 
-type ProfileSection = 'account' | 'ruc' | 'signature' | 'sri' | 'vault';
+export type ProfileSection = 'account' | 'ruc' | 'signature' | 'sri' | 'vault' | 'professional' | 'services';
 const sections: { key: ProfileSection; label: string; Icon: typeof UserRound }[] = [
   { key: 'account', label: 'Datos', Icon: UserRound },
   { key: 'ruc', label: 'RUC', Icon: BriefcaseBusiness },
   { key: 'signature', label: 'Firma digital', Icon: ShieldCheck },
   { key: 'sri', label: 'Cuenta SRI', Icon: KeyRound },
   { key: 'vault', label: 'Bóveda', Icon: FileArchive },
+  { key: 'professional', label: 'Trayectoria', Icon: BriefcaseBusiness },
+  { key: 'services', label: 'Servicios', Icon: BadgeCheck },
 ];
 
-export function ProfileScreen() {
-  const { activeRole, logout, attachedRuc, setAttachedRuc, certificateName, setCertificateName, signatureConfigured, signatureExpiryDate, sriAccountConfigured, sriUsername, completeSignatureSetup, completeSriSetup, taxpayerProfile, simulateRucExtraction, confirmTaxpayerProfile, vaultFiles, addVaultFile } = useApp();
-  const [section, setSection] = useState<ProfileSection>('account');
-  const [fullName, setFullName] = useState(activeRole === 'CONTADOR_PROFESIONAL' ? 'María Fernanda López' : 'Joaquín Bowen Suárez');
-  const [email, setEmail] = useState(activeRole === 'CONTADOR_PROFESIONAL' ? 'maria@estudiocontable.ec' : 'contacto@negocio.ec');
-  const [phone, setPhone] = useState('+593 99 555 3173');
-  const [ruc, setRuc] = useState(activeRole === 'CONTADOR_PROFESIONAL' ? '1712345678001' : '1792456789001');
+export function ProfileScreen({ initialSection = 'account' }: { initialSection?: ProfileSection }) {
+  const { activeRole, accountantEmail, logout, attachedRuc, setAttachedRuc, certificateName, setCertificateName, signatureConfigured, signatureExpiryDate, sriAccountConfigured, sriUsername, completeSignatureSetup, completeSriSetup, taxpayerProfile, simulateRucExtraction, confirmTaxpayerProfile, vaultFiles, addVaultFile } = useApp();
+  const [section, setSection] = useState<ProfileSection>(initialSection);
+  const [fullName, setFullName] = useState(activeRole === 'CONTADOR_PROFESIONAL' ? 'Estudio Contable Demo' : activeRole === 'SUPER_ADMIN' ? 'Super Admin' : taxpayerProfile.razonSocial);
+  const [email, setEmail] = useState(activeRole === 'CONTADOR_PROFESIONAL' ? accountantEmail : activeRole === 'SUPER_ADMIN' ? 'admin@contmarjo.demo' : taxpayerProfile.email ?? 'facturacion@demotaxecuador.com');
+  const [phone, setPhone] = useState(activeRole === 'CONTADOR_PROFESIONAL' ? '099 123 4567' : '+593 99 823 4512');
+  const [ruc, setRuc] = useState(taxpayerProfile.ruc);
   const [address, setAddress] = useState('Quito, Pichincha');
+  const [professionalLicense, setProfessionalLicense] = useState('Registro CPA 17-29384');
+  const [city, setCity] = useState('Quito, Pichincha');
+  const [experience, setExperience] = useState('11 años');
+  const [specialities, setSpecialities] = useState('RIMPE, IVA, auditoría tributaria');
   const [certificatePassword, setCertificatePassword] = useState('');
   const [certificateExpiry, setCertificateExpiry] = useState('2027-10-14');
   const [sriLogin, setSriLogin] = useState(sriUsername);
@@ -54,12 +60,12 @@ export function ProfileScreen() {
     }
   }
 
-  const roleTitle = activeRole === 'CONTADOR_PROFESIONAL' ? 'Perfil profesional' : activeRole === 'SUPER_ADMIN' ? 'Perfil de administración' : 'Perfil del negocio';
-  const visibleSections = activeRole === 'CONTRIBUYENTE' ? sections : sections.filter(({ key }) => key === 'account');
-  return <Screen><TitleBlock eyebrow="CUENTA Y CONFIGURACIÓN" title={roleTitle} subtitle="Administra tus datos, el RUC, la firma y los documentos del negocio." />
+  const roleTitle = activeRole === 'CONTADOR_PROFESIONAL' ? 'Perfil profesional' : activeRole === 'SUPER_ADMIN' ? 'Perfil de administrador' : 'Perfil del contribuyente';
+  const visibleSections = activeRole === 'CONTRIBUYENTE' ? sections.filter(({ key }) => ['account', 'ruc', 'signature', 'sri', 'vault'].includes(key)) : activeRole === 'CONTADOR_PROFESIONAL' ? sections.filter(({ key }) => ['account', 'professional', 'services'].includes(key)) : sections.filter(({ key }) => key === 'account');
+  return <Screen><TitleBlock eyebrow="CUENTA Y CONFIGURACIÓN" title={roleTitle} subtitle={activeRole === 'CONTADOR_PROFESIONAL' ? 'Administra tu presentación profesional y los servicios de tu estudio.' : activeRole === 'SUPER_ADMIN' ? 'Administra el acceso de demostración de la plataforma.' : 'Administra los datos, el RUC, la firma y los documentos del negocio.'} />
     <View style={styles.sectionList}>{visibleSections.map(({ key, label, Icon }) => <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: section === key }} onPress={() => setSection(key)} style={[styles.sectionPill, section === key && styles.sectionPillActive]}><Icon size={14} color={section === key ? theme.brand : theme.muted} /><Text style={[styles.sectionLabel, section === key && styles.sectionLabelActive]}>{label}</Text>{key === 'signature' && signatureConfigured && <View style={styles.greenDot} />}{key === 'sri' && sriAccountConfigured && <View style={styles.greenDot} />}</Pressable>)}</View>
     {section === 'account' ? <>
-      <Card><SectionTitle title="Datos de acceso" /><Field label="Nombre" value={fullName} onChangeText={setFullName} autoCapitalize="words" /><Field label="Correo electrónico" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" /><Field label="Teléfono" value={phone} onChangeText={setPhone} keyboardType="phone-pad" /><Notice>Los datos se guardan solo mientras esta demostración está abierta.</Notice></Card>
+      <Card><SectionTitle title="Datos de acceso" /><Field label={activeRole === 'CONTADOR_PROFESIONAL' ? 'Contador / estudio' : 'Nombre o razón social'} value={fullName} onChangeText={setFullName} autoCapitalize="words" /><Field label="Correo electrónico" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />{activeRole === 'CONTADOR_PROFESIONAL' ? <Field label="Registro profesional" value={professionalLicense} onChangeText={setProfessionalLicense} /> : activeRole === 'CONTRIBUYENTE' ? <Field label="Teléfono" value={phone} onChangeText={setPhone} keyboardType="phone-pad" /> : <Notice>Superadministrador · demo local</Notice>}<Notice>Los datos se guardan solo mientras esta demostración está abierta.</Notice></Card>
       {activeRole === 'CONTRIBUYENTE' && <Card><SectionTitle title="Datos tributarios" /><Text style={styles.dataValue}>RUC {taxpayerProfile.ruc || ruc}</Text><Text style={styles.muted}>{taxpayerProfile.regimen || 'Completa la información con tu PDF del RUC'}</Text><Text style={styles.dataValue}>{taxpayerProfile.address || address}</Text><Button compact title="Revisar información del RUC" variant="secondary" onPress={() => setSection('ruc')} /></Card>}
       <Button title="Cerrar sesión" variant="secondary" onPress={() => { logout(); router.replace(getRouteForSession(false)); }} />
     </> : section === 'ruc' ? <>
@@ -75,6 +81,10 @@ export function ProfileScreen() {
     </> : section === 'sri' ? <>
       <Notice>Configura esta sección para simular la sincronización de comprobantes. El prototipo no se conecta al SRI y nunca guarda tu contraseña.</Notice>
       <Card><SectionTitle title="Cuenta del SRI en línea" /><Field label="Usuario / RUC" value={sriLogin} onChangeText={setSriLogin} placeholder="Usuario de ejemplo" autoCapitalize="none" /><Field label="Contraseña SRI (solo esta prueba)" value={sriPassword} onChangeText={setSriPassword} placeholder="No uses la clave real" secureTextEntry /><Notice tone={sriAccountConfigured ? 'success' : 'warning'}>{sriAccountConfigured ? `Cuenta de demo configurada como ${sriUsername}; sincronización local simulada.` : 'Aún no está configurada. Completa usuario y clave de ejemplo para habilitar el flujo simulado.'}</Notice><Button title="Probar y guardar configuración demo" disabled={!sriLogin.trim() || !sriPassword} onPress={() => { completeSriSetup(sriLogin.trim()); setSriPassword(''); Alert.alert('Cuenta SRI configurada · demo', 'La clave se borró y no se contactó al SRI.'); }} /></Card>
+    </> : section === 'professional' ? <>
+      <Card><SectionTitle title="Trayectoria profesional" /><Text style={styles.muted}>Datos visibles en tu presentación de demostración.</Text><Field label="Ciudad" value={city} onChangeText={setCity} /><Field label="Teléfono" value={phone} onChangeText={setPhone} keyboardType="phone-pad" /><Field label="Experiencia" value={experience} onChangeText={setExperience} /><View style={styles.professionalBadge}><BadgeCheck size={16} color={theme.brand} /><Text style={styles.professionalBadgeText}>{professionalLicense}</Text></View></Card>
+    </> : section === 'services' ? <>
+      <Card><SectionTitle title="Especialidades y servicios" /><Text style={styles.muted}>Describe las áreas en las que puedes recibir solicitudes.</Text><Field label="Especialidades" value={specialities} onChangeText={setSpecialities} multiline /><Notice>Las solicitudes y perfiles del marketplace pertenecen a la demostración.</Notice></Card>
     </> : <>
       <Card><View style={styles.signatureHeading}><View style={styles.vaultIcon}><FileArchive size={19} color={theme.brand} /></View><View style={{ flex: 1 }}><Text style={styles.cardTitle}>Bóveda del negocio</Text><Text style={styles.muted}>RUC, declaraciones, balances y contratos.</Text></View></View><Button title="Añadir documento" onPress={pickVaultFile} icon={<FileUp size={16} color="#fff" />} /></Card>
       <SectionTitle title={`Bóveda · ${vaultFiles.length} / 20 documentos`} />
@@ -93,6 +103,8 @@ const styles = StyleSheet.create({
   greenDot: { width: 6, height: 6, borderRadius: 6, backgroundColor: theme.success },
   muted: { color: theme.muted, fontSize: 12, lineHeight: 18 },
   dataValue: { color: theme.ink, fontSize: 14, fontWeight: '600' },
+  professionalBadge: { minHeight: 42, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, backgroundColor: theme.brandSoft },
+  professionalBadgeText: { color: theme.brandDark, fontSize: 12, fontWeight: '700' },
   cardTitle: { color: theme.ink, fontSize: 14, fontWeight: '700' },
   signatureHeading: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   shield: { width: 43, height: 43, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: theme.brandSoft },

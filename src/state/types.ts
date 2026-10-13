@@ -1,4 +1,4 @@
-export type UserRole = 'CONTRIBUYENTE' | 'CONTADOR_PROFESIONAL' | 'SUPER_ADMIN';
+export type UserRole = 'CONTRIBUYENTE' | 'CONTADOR_PROFESIONAL' | 'GESTOR_CONTADORES' | 'SUPER_ADMIN';
 
 export type DocumentType =
   | 'FACTURA'
@@ -9,20 +9,68 @@ export type DocumentType =
   | 'LIQUIDACION_COMPRA';
 
 export type EvidenceType = 'IVA mensual' | 'Impuesto a la renta' | 'ATS / anexo' | 'Otra obligación';
+export type ProfessionalVerificationStatus = 'PENDIENTE' | 'EN_REVISION' | 'OBSERVADO' | 'HABILITADO_PARA_ENTREVISTA' | 'ENTREVISTA_AGENDADA' | 'PENDIENTE_DECISION' | 'VERIFICADO' | 'RECHAZADO' | 'SUSPENDIDO';
+export type MobileInterviewModality = 'VIRTUAL' | 'PRESENCIAL';
+export type MobileInterviewAvailability = { id: string; weekday: number; startsAt: string; endsAt: string; modality: MobileInterviewModality; place: string };
+export type MobileInterviewAppointment = { id: string; startsAt: string; modality: MobileInterviewModality; place: string; accountantName: string; accountantEmail: string; completed: boolean; note?: string };
+export type ProfessionalProfile = {
+  fullName: string;
+  email: string;
+  city: string;
+  phone: string;
+  title: string;
+  institution: string;
+  graduationYear: string;
+  experience: string;
+  specialities: string;
+  services: string;
+  certifications: string;
+};
+export type ProfessionalEvidence = { name: string; uri: string; size: number; type: string };
+export type ProfessionalDocuments = { cv: ProfessionalEvidence | null; title: ProfessionalEvidence | null; certifications: ProfessionalEvidence[] };
+export type MobileContractStatus = 'EN_CURSO' | 'ENTREGADO' | 'CAMBIOS_SOLICITADOS' | 'COMPLETADO';
+
+export interface MobileServiceContract {
+  id: string;
+  requestId: string;
+  clientId: string;
+  accountantId: string;
+  accountantName: string;
+  title: string;
+  scope: string;
+  priceUsd: number;
+  estimatedTime: string;
+  status: MobileContractStatus;
+  deliveries: { id: string; version: number; name: string; uri: string; note: string; at: string }[];
+  messages: { id: string; authorId: string; text: string; sentAt: string }[];
+  review: { stars: number; comment: string } | null;
+  events: { id: string; kind: string; note: string; at: string }[];
+}
 
 export interface MobileDocument {
   id: string;
   type: DocumentType;
   customer: string;
   date: string;
+  dateISO?: string;
   total: number;
   status: import('./documentStatus').EmissionStatus;
   signedAutomatically: boolean;
   demoAccessKey: string;
+  clientRuc?: string;
+  clientEmail?: string;
+  clientAddress?: string;
+  subtotal0?: number;
+  subtotal15?: number;
+  iva15?: number;
+  formaPago?: string;
+  observaciones?: string;
+  items?: { description: string; quantity: number; unitPrice: number; taxPercent: number }[];
 }
 
 export interface MobileTaxpayerProfile {
   ruc: string;
+  email?: string;
   razonSocial: string;
   nombreComercial: string;
   regimen: string;
@@ -63,13 +111,39 @@ export interface MobileInventoryItem {
   code: string;
   stock: number;
   cost: number;
+  category?: string;
+  unit?: string;
+  minimumStock?: number;
+  salePrice?: number;
+  use?: string;
+  lastSource?: string;
+  kind?: 'PRODUCTO' | 'INSUMO';
 }
+
+export interface MobileParsedPurchase {
+  id: string;
+  fileName: string;
+  supplier: string;
+  supplierRuc: string;
+  invoiceNumber: string;
+  dateISO: string;
+  items: { description: string; quantity: number; unitCost: number }[];
+  total: number;
+}
+
+export type MobileInventoryDecision =
+  | { mode: 'EXISTING'; itemId: string }
+  | { mode: 'NEW'; item: Omit<MobileInventoryItem, 'id' | 'stock' | 'cost'> };
 
 export interface MobileExpense {
   id: string;
   supplier: string;
   concept: string;
   total: number;
+  supplierRuc?: string;
+  invoiceNumber?: string;
+  dateISO?: string;
+  category?: string;
 }
 
 export interface MobilePayable {
@@ -77,7 +151,9 @@ export interface MobilePayable {
   supplier: string;
   total: number;
   dueDate: string;
-  status: 'Pendiente · demo';
+  status: 'PENDIENTE' | 'PAGADO';
+  supplierRuc?: string;
+  invoiceNumber?: string;
 }
 
 export interface MobileEvidence {

@@ -2,16 +2,17 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Activity, Database, FileText, MailCheck, ShieldCheck, Users } from 'lucide-react-native';
 import { Card, Notice, Pill, Screen, TitleBlock } from '../components/ui/primitives';
+import { useApp } from '../state/AppState';
 import { theme } from '../theme';
 
-const demoUsers = [
-  { name: 'Comercial Andina', role: 'Contribuyente', status: 'Activo · demo' },
-  { name: 'María Fernanda López', role: 'Contadora', status: 'Activo · demo' },
-  { name: 'Servicios Pichincha', role: 'Contribuyente', status: 'Pendiente · demo' },
-];
-
 export function AdminUsersScreen() {
-  return <Screen><TitleBlock eyebrow="SUPER ADMIN" title="Cuentas de usuario" subtitle="Vista de control de la plataforma. Estos perfiles son datos de demostración." /><Notice>Entorno de prototipo: aquí no se gestionan cuentas reales ni datos de producción.</Notice>{demoUsers.map((user) => <Card key={user.name} style={styles.userCard}><View style={styles.avatar}><Users size={16} color={theme.brand} /></View><View style={{ flex: 1 }}><Text style={styles.title}>{user.name}</Text><Text style={styles.muted}>{user.role}</Text></View><Pill tone={user.status.startsWith('Activo') ? 'good' : 'warning'}>{user.status}</Pill></Card>)}</Screen>;
+  const { taxpayerProfile, professionalProfile, professionalVerification } = useApp();
+  const statusLabels: Record<string, string> = { PENDIENTE: 'Borrador', EN_REVISION: 'En revisión', OBSERVADO: 'Requiere correcciones', HABILITADO_PARA_ENTREVISTA: 'Entrevista habilitada', ENTREVISTA_AGENDADA: 'Entrevista agendada', PENDIENTE_DECISION: 'Pendiente de decisión', VERIFICADO: 'Verificada', RECHAZADO: 'Rechazada', SUSPENDIDO: 'Suspendida' };
+  const users = [
+    { name: taxpayerProfile.razonSocial || 'Contribuyente sin razón social', detail: `${taxpayerProfile.ruc ? `RUC ${taxpayerProfile.ruc}` : 'RUC pendiente'} · ${taxpayerProfile.email || 'Sin correo'}`, role: 'Contribuyente', status: taxpayerProfile.ruc ? 'Activa' : 'Pendiente', good: Boolean(taxpayerProfile.ruc) },
+    { name: professionalProfile.fullName || 'Contador profesional', detail: `${professionalProfile.email || 'Sin correo'} · ${professionalProfile.city || 'Ciudad pendiente'}`, role: 'Contador', status: statusLabels[professionalVerification], good: professionalVerification === 'VERIFICADO' },
+  ];
+  return <Screen><TitleBlock eyebrow="SUPER ADMIN" title="Cuentas de usuario" subtitle="Perfiles registrados en el estado actual de la plataforma." /><Notice>Esta sesión de demostración conserva localmente los datos de contribuyente y contador para revisar sus perfiles.</Notice>{users.map((user) => <Card key={user.role} style={styles.userCard}><View style={styles.avatar}><Users size={16} color={theme.brand} /></View><View style={{ flex: 1, gap: 3 }}><Text style={styles.title}>{user.name}</Text><Text style={styles.muted}>{user.role} · {user.detail}</Text></View><Pill tone={user.good ? 'good' : 'warning'}>{user.status}</Pill></Card>)}</Screen>;
 }
 
 export function AdminServicesScreen() {
